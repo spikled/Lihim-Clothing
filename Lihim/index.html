@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lihim Clothing | Shop</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="top-bar">
+        <div class="container-wide">
+            <span>
+                <a href="admin.html" style="color: #fff; text-decoration: none;">Seller Centre</a> | Download | Follow us
+            </span>
+            <span>Notifications | Help | English</span>
+        </div>
+    </div>
+
+    <header class="main-header">
+        <div class="container-wide nav-layout">
+            <div class="logo">LIHIM</div>
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Search Lihim essentials...">
+                <button class="search-btn" onclick="searchProducts()">🔍</button>
+            </div>
+            <div class="cart-container" onclick="toggleCart()">
+                <div class="cart-icon">🛒</div>
+                <span id="cart-badge">0</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="container-wide main-layout">
+        <aside class="sidebar">
+            <h3>FILTERS</h3>
+            <div class="filter-group">
+                <h4>Category</h4>
+                <label><input type="checkbox" value="Hoodies" onchange="applyFilters()"> Hoodies</label>
+                <label><input type="checkbox" value="T-Shirts" onchange="applyFilters()"> T-Shirts</label>
+                <label><input type="checkbox" value="Bottoms" onchange="applyFilters()"> Bottoms</label>
+                <label><input type="checkbox" value="Accessories" onchange="applyFilters()"> Accessories</label>
+            </div>
+            <div class="filter-group">
+                <h4>Price Range</h4>
+                <input type="number" id="min-price" placeholder="Min" class="price-input">
+                <input type="number" id="max-price" placeholder="Max" class="price-input">
+                <button class="apply-btn" onclick="applyFilters()">Apply</button>
+            </div>
+            <div class="filter-group">
+                <button class="apply-btn" onclick="clearFilters()" style="background: #666;">Clear Filters</button>
+            </div>
+        </aside>
+
+        <section class="products">
+            <div class="sort-bar">
+                <span>Sort by:</span>
+                <button class="sort-btn active" onclick="sortProducts('popular')">Popular</button>
+                <button class="sort-btn" onclick="sortProducts('latest')">Latest</button>
+                <button class="sort-btn" onclick="sortProducts('price-low')">Price: Low to High</button>
+                <button class="sort-btn" onclick="sortProducts('price-high')">Price: High to Low</button>
+            </div>
+
+            <div class="grid" id="product-grid">
+                <!-- Products will be loaded here -->
+            </div>
+        </section>
+    </div>
+
+    <!-- Cart Drawer -->
+    <div id="cartDrawer" class="cart-drawer">
+        <div class="cart-header">
+            <h3>Your Bag</h3>
+            <span class="close-cart" onclick="toggleCart()">&times;</span>
+        </div>
+        <div id="cart-items" class="cart-body">
+            <p style="text-align:center; color:#888; margin-top:20px;">Your bag is empty.</p>
+        </div>
+        <div class="cart-footer">
+            <div class="total-row">
+                <span>Subtotal:</span>
+                <span id="cart-total">₱0</span>
+            </div>
+            <button class="checkout-btn" onclick="checkout()">Checkout Now</button>
+        </div>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div id="checkoutModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeCheckout()">&times;</span>
+            <h2>Checkout</h2>
+            <form id="checkout-form" onsubmit="processOrder(event)">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="tel" required>
+                </div>
+                <div class="form-group">
+                    <label>Shipping Address</label>
+                    <textarea required rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Payment Method</label>
+                    <select required>
+                        <option value="cod">Cash on Delivery</option>
+                        <option value="gcash">GCash</option>
+                        <option value="card">Credit/Debit Card</option>
+                    </select>
+                </div>
+                <div class="order-summary">
+                    <h3>Order Summary</h3>
+                    <div id="checkout-items"></div>
+                    <div class="summary-row">
+                        <span>Subtotal:</span>
+                        <span id="checkout-subtotal">₱0</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Shipping:</span>
+                        <span>₱150</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>Total:</span>
+                        <span id="checkout-total">₱0</span>
+                    </div>
+                </div>
+                <button type="submit" class="checkout-btn">Place Order</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="database.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
