@@ -1,307 +1,218 @@
-let currentTab = 'products';
-let currentOrderFilter = 'all';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lihim Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="admin-body">
 
-// Initialize admin dashboard
-document.addEventListener('DOMContentLoaded', () => {
-    showTab('products');
-    loadProducts();
-    loadOrders();
-    loadAnalytics();
-});
+    <div class="admin-header">
+        <div class="container-wide">
+            <h1>LIHIM ADMIN</h1>
+            <nav class="admin-nav">
+                <a href="index.html" target="_blank">View Shop</a>
+                <a href="#" onclick="showTab('products')">Products</a>
+                <a href="#" onclick="showTab('orders')">Orders</a>
+                <a href="#" onclick="showTab('analytics')">Analytics</a>
+            </nav>
+        </div>
+    </div>
 
-// Tab Navigation
-function showTab(tabName) {
-    currentTab = tabName;
-    
-    // Hide all tabs
-    document.querySelectorAll('.admin-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    // Show selected tab
-    document.getElementById(`${tabName}-tab`).classList.add('active');
-    
-    // Update nav
-    document.querySelectorAll('.admin-nav a').forEach(link => {
-        link.style.borderColor = 'transparent';
-    });
-    event?.target?.style.borderColor = '#fff';
-}
-
-// Product Management
-function loadProducts() {
-    const products = DB.getProducts();
-    const tbody = document.getElementById('products-tbody');
-    
-    if (products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #888;">No products yet</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = products.map(product => {
-        const discountedPrice = product.discount > 0 
-            ? product.price * (1 - product.discount / 100) 
-            : product.price;
+    <div class="container-wide admin-container">
         
-        return `
-            <tr>
-                <td><div class="product-img-thumb" style="background-image: url('${product.image}');"></div></td>
-                <td>${product.name}</td>
-                <td>${product.category}</td>
-                <td>₱${discountedPrice.toLocaleString()}${product.discount > 0 ? ` <small style="color: #888; text-decoration: line-through;">₱${product.price.toLocaleString()}</small>` : ''}</td>
-                <td>${product.stock}</td>
-                <td>${product.sold}</td>
-                <td><span class="status-badge ${product.active ? 'status-active' : 'status-inactive'}">${product.active ? 'Active' : 'Inactive'}</span></td>
-                <td>
-                    <button class="action-btn" onclick="editProduct('${product.id}')">Edit</button>
-                    <button class="action-btn delete" onclick="deleteProduct('${product.id}')">Delete</button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
+        <!-- Products Tab -->
+        <div id="products-tab" class="admin-tab active">
+            <div class="tab-header">
+                <h2>Product Management</h2>
+                <button class="btn-primary" onclick="openAddProduct()">+ Add New Product</button>
+            </div>
 
-function openAddProduct() {
-    document.getElementById('product-modal-title').innerText = 'Add New Product';
-    document.getElementById('product-form').reset();
-    document.getElementById('product-id').value = '';
-    document.getElementById('productModal').style.display = 'block';
-}
+            <div class="products-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th>Sales</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="products-tbody">
+                        <!-- Products will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-function editProduct(id) {
-    const product = DB.getProduct(id);
-    if (!product) return;
-    
-    document.getElementById('product-modal-title').innerText = 'Edit Product';
-    document.getElementById('product-id').value = product.id;
-    document.getElementById('product-name').value = product.name;
-    document.getElementById('product-category').value = product.category;
-    document.getElementById('product-price').value = product.price;
-    document.getElementById('product-stock').value = product.stock;
-    document.getElementById('product-discount').value = product.discount || 0;
-    document.getElementById('product-image').value = product.image;
-    document.getElementById('product-description').value = product.description || '';
-    document.getElementById('product-active').checked = product.active;
-    
-    document.getElementById('productModal').style.display = 'block';
-}
-
-function saveProduct(event) {
-    event.preventDefault();
-    
-    const form = event.target;
-    const productId = document.getElementById('product-id').value;
-    
-    const productData = {
-        name: document.getElementById('product-name').value,
-        category: document.getElementById('product-category').value,
-        price: parseFloat(document.getElementById('product-price').value),
-        stock: parseInt(document.getElementById('product-stock').value),
-        discount: parseInt(document.getElementById('product-discount').value) || 0,
-        image: document.getElementById('product-image').value,
-        description: document.getElementById('product-description').value,
-        active: document.getElementById('product-active').checked
-    };
-    
-    if (productId) {
-        // Update existing product
-        DB.updateProduct(productId, productData);
-    } else {
-        // Add new product
-        DB.addProduct(productData);
-    }
-    
-    closeProductModal();
-    loadProducts();
-    loadAnalytics();
-}
-
-function deleteProduct(id) {
-    if (confirm('Are you sure you want to delete this product?')) {
-        DB.deleteProduct(id);
-        loadProducts();
-        loadAnalytics();
-    }
-}
-
-function closeProductModal() {
-    document.getElementById('productModal').style.display = 'none';
-}
-
-// Order Management
-function loadOrders() {
-    let orders = DB.getOrders();
-    
-    // Apply filter
-    if (currentOrderFilter !== 'all') {
-        orders = orders.filter(o => o.status === currentOrderFilter);
-    }
-    
-    // Sort by date (newest first)
-    orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    
-    const tbody = document.getElementById('orders-tbody');
-    
-    if (orders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #888;">No orders yet</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = orders.map(order => {
-        const date = new Date(order.createdAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        });
-        
-        return `
-            <tr>
-                <td><strong>${order.id}</strong></td>
-                <td>
-                    ${order.customer.name}<br>
-                    <small style="color: #888;">${order.customer.email}</small>
-                </td>
-                <td>${order.items.length} item${order.items.length > 1 ? 's' : ''}</td>
-                <td><strong>₱${order.total.toLocaleString()}</strong></td>
-                <td>${date}</td>
-                <td><span class="status-badge status-${order.status}">${order.status}</span></td>
-                <td>
-                    <button class="action-btn" onclick="viewOrder('${order.id}')">View</button>
-                    <select onchange="updateOrderStatus('${order.id}', this.value)" style="padding: 5px; font-size: 12px; margin-left: 5px;">
-                        <option value="">Change Status</option>
+        <!-- Orders Tab -->
+        <div id="orders-tab" class="admin-tab">
+            <div class="tab-header">
+                <h2>Order Management</h2>
+                <div class="order-filters">
+                    <select onchange="filterOrders(this.value)">
+                        <option value="all">All Orders</option>
                         <option value="pending">Pending</option>
                         <option value="processing">Processing</option>
                         <option value="shipped">Shipped</option>
                         <option value="delivered">Delivered</option>
                         <option value="cancelled">Cancelled</option>
                     </select>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-function filterOrders(status) {
-    currentOrderFilter = status;
-    loadOrders();
-}
-
-function viewOrder(id) {
-    const order = DB.getOrder(id);
-    if (!order) return;
-    
-    const date = new Date(order.createdAt).toLocaleString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-    
-    const details = `
-        <div style="margin-bottom: 20px;">
-            <h3 style="margin-bottom: 10px;">Order #${order.id}</h3>
-            <p style="color: #888; margin-bottom: 5px;">${date}</p>
-            <span class="status-badge status-${order.status}">${order.status}</span>
-        </div>
-        
-        <div style="margin-bottom: 20px;">
-            <h4 style="margin-bottom: 10px;">Customer Information</h4>
-            <p><strong>Name:</strong> ${order.customer.name}</p>
-            <p><strong>Email:</strong> ${order.customer.email}</p>
-            <p><strong>Phone:</strong> ${order.customer.phone}</p>
-            <p><strong>Address:</strong><br>${order.customer.address}</p>
-        </div>
-        
-        <div style="margin-bottom: 20px;">
-            <h4 style="margin-bottom: 10px;">Order Items</h4>
-            ${order.items.map(item => `
-                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding: 10px; background: #f9f9f9;">
-                    <span>${item.name}</span>
-                    <span><strong>₱${item.price.toLocaleString()}</strong></span>
                 </div>
-            `).join('')}
-        </div>
-        
-        <div style="background: #f9f9f9; padding: 15px; margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span>Subtotal:</span>
-                <span>₱${order.subtotal.toLocaleString()}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span>Shipping:</span>
-                <span>₱${order.shipping.toLocaleString()}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; padding-top: 10px; border-top: 2px solid #000; font-size: 18px; font-weight: 700;">
-                <span>Total:</span>
-                <span>₱${order.total.toLocaleString()}</span>
-            </div>
-        </div>
-        
-        <div>
-            <h4 style="margin-bottom: 10px;">Payment Method</h4>
-            <p>${order.paymentMethod.toUpperCase()}</p>
-        </div>
-    `;
-    
-    document.getElementById('order-details').innerHTML = details;
-    document.getElementById('orderModal').style.display = 'block';
-}
 
-function updateOrderStatus(orderId, status) {
-    if (!status) return;
-    
-    DB.updateOrder(orderId, { status: status });
-    loadOrders();
-    
-    // Reset dropdown
-    event.target.value = '';
-}
-
-function closeOrderModal() {
-    document.getElementById('orderModal').style.display = 'none';
-}
-
-// Analytics
-function loadAnalytics() {
-    const analytics = DB.getAnalytics();
-    
-    document.getElementById('total-revenue').innerText = `₱${analytics.totalRevenue.toLocaleString()}`;
-    document.getElementById('total-orders').innerText = analytics.totalOrders;
-    document.getElementById('total-products').innerText = analytics.totalProducts;
-    document.getElementById('avg-order').innerText = `₱${Math.round(analytics.avgOrder).toLocaleString()}`;
-    
-    // Top products
-    const topProductsDiv = document.getElementById('top-products');
-    
-    if (analytics.topProducts.length === 0) {
-        topProductsDiv.innerHTML = '<p style="text-align: center; color: #888; padding: 20px;">No sales data yet</p>';
-        return;
-    }
-    
-    topProductsDiv.innerHTML = analytics.topProducts.map((product, index) => `
-        <div class="top-product-item">
-            <div>
-                <div style="font-size: 24px; color: #888; margin-bottom: 5px;">#${index + 1}</div>
-                <div class="top-product-info">${product.name}</div>
-                <div style="font-size: 12px; color: #888; margin-top: 3px;">${product.category}</div>
-            </div>
-            <div style="text-align: right;">
-                <div class="top-product-sales">${product.sold} sold</div>
-                <div style="font-size: 14px; color: #888;">₱${product.price.toLocaleString()}</div>
+            <div class="orders-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-tbody">
+                        <!-- Orders will be loaded here -->
+                    </tbody>
+                </table>
             </div>
         </div>
-    `).join('');
-}
 
-window.onclick = function(event) {
-    const productModal = document.getElementById('productModal');
-    const orderModal = document.getElementById('orderModal');
-    
-    if (event.target === productModal) {
-        closeProductModal();
-    }
-    if (event.target === orderModal) {
-        closeOrderModal();
-    }
-}
+        <!-- Analytics Tab -->
+        <div id="analytics-tab" class="admin-tab">
+            <h2>Sales Analytics</h2>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Revenue</h3>
+                    <div class="stat-value" id="total-revenue">₱0</div>
+                    <div class="stat-label">All time</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Orders</h3>
+                    <div class="stat-value" id="total-orders">0</div>
+                    <div class="stat-label">All time</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Products</h3>
+                    <div class="stat-value" id="total-products">0</div>
+                    <div class="stat-label">In inventory</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Avg Order Value</h3>
+                    <div class="stat-value" id="avg-order">₱0</div>
+                    <div class="stat-label">Per transaction</div>
+                </div>
+            </div>
+
+            <div class="chart-section">
+                <h3>Top Selling Products</h3>
+                <div id="top-products" class="top-products-list">
+                    <!-- Top products will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Add/Edit Product Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeProductModal()">&times;</span>
+            <h2 id="product-modal-title">Add New Product</h2>
+            <form id="product-form" onsubmit="saveProduct(event)">
+                <input type="hidden" id="product-id">
+                
+                <div class="form-group">
+                    <label>Product Name</label>
+                    <input type="text" id="product-name" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="product-category" required>
+                            <option value="Hoodies">Hoodies</option>
+                            <option value="T-Shirts">T-Shirts</option>
+                            <option value="Bottoms">Bottoms</option>
+                            <option value="Accessories">Accessories</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Price (₱)</label>
+                        <input type="number" id="product-price" required min="0">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Stock</label>
+                        <input type="number" id="product-stock" required min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Discount (%)</label>
+                        <input type="number" id="product-discount" min="0" max="100" value="0">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Product Image</label>
+                    <input type="file" id="product-image-file" accept="image/*" onchange="previewImage(this)">
+                    <input type="hidden" id="product-image">
+                    <input type="hidden" id="product-image-path">
+                    <div id="image-preview" style="margin-top: 10px; display: none;">
+                        <img id="preview-img" style="max-width: 200px; max-height: 200px; border: 2px solid #eee;">
+                        <p style="font-size: 12px; color: #888; margin-top: 5px;">Image preview</p>
+                    </div>
+                    <div id="upload-progress" style="margin-top: 10px; display: none;">
+                        <div style="background: #eee; height: 20px; border-radius: 10px; overflow: hidden;">
+                            <div id="progress-bar" style="background: #000; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                        <p style="font-size: 12px; color: #888; margin-top: 5px;">Uploading image...</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="product-description" rows="3"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="product-active" checked>
+                        Active (visible in shop)
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-primary">Save Product</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div id="orderModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeOrderModal()">&times;</span>
+            <h2>Order Details</h2>
+            <div id="order-details">
+                <!-- Order details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
