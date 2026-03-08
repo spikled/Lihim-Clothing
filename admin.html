@@ -87,7 +87,7 @@
             </div>
         </div>
 
-        <!-- Analytecs Tab -->
+        <!-- Analytics Tab -->
         <div id="analytics-tab" class="admin-tab">
             <h2>Sales Analytics</h2>
             
@@ -124,7 +124,7 @@
 
     </div>
 
-    <!-- Add/Edit prdct Modal -->
+    <!-- Add/Edit Product Modal -->
     <div id="productModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeProductModal()">&times;</span>
@@ -165,8 +165,20 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Image URL</label>
-                    <input type="url" id="product-image" required placeholder="https://example.com/image.jpg">
+                    <label>Product Image</label>
+                    <input type="file" id="product-image-file" accept="image/*" onchange="previewImage(this)">
+                    <input type="hidden" id="product-image">
+                    <input type="hidden" id="product-image-path">
+                    <div id="image-preview" style="margin-top: 10px; display: none;">
+                        <img id="preview-img" style="max-width: 200px; max-height: 200px; border: 2px solid #eee;">
+                        <p style="font-size: 12px; color: #888; margin-top: 5px;">Image preview</p>
+                    </div>
+                    <div id="upload-progress" style="margin-top: 10px; display: none;">
+                        <div style="background: #eee; height: 20px; border-radius: 10px; overflow: hidden;">
+                            <div id="progress-bar" style="background: #000; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                        <p style="font-size: 12px; color: #888; margin-top: 5px;">Uploading image...</p>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -186,17 +198,21 @@
         </div>
     </div>
 
-    <!-- Order Details -->
+    <!-- Order Details Modal -->
     <div id="orderModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeOrderModal()">&times;</span>
             <h2>Order Details</h2>
             <div id="order-details">
+                <!-- Order details will be loaded here -->
             </div>
         </div>
     </div>
 
-    <script src="database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <script src="firebase-config.js"></script>
     <script src="admin.js"></script>
 </body>
 </html>
