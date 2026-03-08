@@ -1,0 +1,344 @@
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY_HERE",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const DB = {
+    // Collections
+    productsCollection: db.collection('products'),
+    ordersCollection: db.collection('orders'),
+
+    async init() {
+        try {
+            const productsSnapshot = await this.productsCollection.limit(1).get();
+            if (productsSnapshot.empty) {
+                console.log('Database is empty. Adding sample products...');
+                await this.resetProducts();
+            }
+            console.log('Database initialized successfully');
+        } catch (error) {
+            console.error('Error initializing database:', error);
+        }
+    },
+
+    async getProducts() {
+        try {
+            const snapshot = await this.productsCollection.get();
+            return snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+        } catch (error) {
+            console.error('Error getting products:', error);
+            return [];
+        }
+    },
+
+    async getProduct(id) {
+        try {
+            const doc = await this.productsCollection.doc(id).get();
+            if (doc.exists) {
+                return { id: doc.id, ...doc.data() };
+            }
+            return null;
+        } catch (error) {
+            console.error('Error getting product:', error);
+            return null;
+        }
+    },
+
+    async addProduct(product) {
+        try {
+            product.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            product.sold = 0;
+            const docRef = await this.productsCollection.add(product);
+            return { id: docRef.id, ...product };
+        } catch (error) {
+            console.error('Error adding product:', error);
+            return null;
+        }
+    },
+
+    async updateProduct(id, updates) {
+        try {
+            await this.productsCollection.doc(id).update(updates);
+            return { id, ...updates };
+        } catch (error) {
+            console.error('Error updating product:', error);
+            return null;
+        }
+    },
+
+    async deleteProduct(id) {
+        try {
+            await this.productsCollection.doc(id).delete();
+            return true;
+        } catch (error) {
+            console.error('Error deleting product:', error);
+            return false;
+        }
+    },
+
+    async getOrders() {
+        try {
+            const snapshot = await this.ordersCollection.orderBy('createdAt', 'desc').get();
+            return snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
+                };
+            });
+        } catch (error) {
+            console.error('Error getting orders:', error);
+            return [];
+        }
+    },
+
+    async getOrder(id) {
+        try {
+            const doc = await this.ordersCollection.doc(id).get();
+            if (doc.exists) {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
+                };
+            }
+            return null;
+        } catch (error) {
+            console.error('Error getting order:', error);
+            return null;
+        }
+    },
+
+    async addOrder(order) {
+        try {
+            order.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            order.status = 'pending';
+            
+            const docRef = await this.ordersCollection.add(order);
+            
+            // Update product sold counts and stock based on quantity
+            const batch = db.batch();
+            for (const item of order.items) {
+                const productRef = this.productsCollection.doc(item.productId);
+                const productDoc = await productRef.get();
+                
+                if (productDoc.exists) {
+                    const product = productDoc.data();
+                    const quantity = item.quantity || 1;
+                    batch.update(productRef, {
+                        sold: (product.sold || 0) + quantity,
+                        stock: (product.stock || 0) - quantity
+                    });
+                }
+            }
+            await batch.commit();
+            
+            return { id: docRef.id, ...order };
+        } catch (error) {
+            console.error('Error adding order:', error);
+            return null;
+        }
+    },
+
+    async updateOrder(id, updates) {
+        try {
+            await this.ordersCollection.doc(id).update(updates);
+            return { id, ...updates };
+        } catch (error) {
+            console.error('Error updating order:', error);
+            return null;
+        }
+    },
+
+    async deleteOrder(id) {
+        try {
+            await this.ordersCollection.doc(id).delete();
+            return true;
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            return false;
+        }
+    },
+
+    async getAnalytics() {
+        try {
+            const orders = await this.getOrders();
+            const products = await this.getProducts();
+            
+            const totalRevenue = orders
+                .filter(o => o.status !== 'cancelled')
+                .reduce((sum, o) => sum + (o.total || 0), 0);
+            
+            const totalOrders = orders.filter(o => o.status !== 'cancelled').length;
+            
+            const avgOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+            
+            const topProducts = products
+                .sort((a, b) => (b.sold || 0) - (a.sold || 0))
+                .slice(0, 5);
+            
+            return {
+                totalRevenue,
+                totalOrders,
+                totalProducts: products.length,
+                avgOrder,
+                topProducts
+            };
+        } catch (error) {
+            console.error('Error getting analytics:', error);
+            return {
+                totalRevenue: 0,
+                totalOrders: 0,
+                totalProducts: 0,
+                avgOrder: 0,
+                topProducts: []
+            };
+        }
+    },
+
+ 
+    async resetProducts() {
+        const sampleProducts = [
+            {
+                name: 'Lihim Signature Hoodie',
+                category: 'Hoodies',
+                price: 1999,
+                stock: 50,
+                discount: 20,
+                image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=400&auto=format&fit=crop',
+                description: 'Premium cotton blend hoodie with signature embroidery',
+                active: true,
+                sold: 1200
+            },
+            {
+                name: 'Oversized Black Tee',
+                category: 'T-Shirts',
+                price: 899,
+                stock: 100,
+                discount: 15,
+                image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=400&auto=format&fit=crop',
+                description: 'Relaxed fit oversized t-shirt in premium cotton',
+                active: true,
+                sold: 850
+            },
+            {
+                name: 'Cargo Pants - Olive',
+                category: 'Bottoms',
+                price: 2499,
+                stock: 30,
+                discount: 0,
+                image: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?q=80&w=400&auto=format&fit=crop',
+                description: 'Tactical cargo pants with multiple pockets',
+                active: true,
+                sold: 420
+            },
+            {
+                name: 'Essential White Tee',
+                category: 'T-Shirts',
+                price: 699,
+                stock: 150,
+                discount: 10,
+                image: 'https://images.unsplash.com/photo-1622445275463-afa2ab738c34?q=80&w=400&auto=format&fit=crop',
+                description: 'Classic white crew neck t-shirt',
+                active: true,
+                sold: 1500
+            },
+            {
+                name: 'Zip-Up Hoodie Grey',
+                category: 'Hoodies',
+                price: 2299,
+                stock: 40,
+                discount: 25,
+                image: 'https://images.unsplash.com/photo-1578587018452-892bacefd3f2?q=80&w=400&auto=format&fit=crop',
+                description: 'Full zip hoodie with fleece lining',
+                active: true,
+                sold: 680
+            },
+            {
+                name: 'Denim Jacket - Classic Blue',
+                category: 'Hoodies',
+                price: 3499,
+                stock: 20,
+                discount: 0,
+                image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?q=80&w=400&auto=format&fit=crop',
+                description: 'Vintage style denim jacket',
+                active: true,
+                sold: 320
+            },
+            {
+                name: 'Jogger Pants Black',
+                category: 'Bottoms',
+                price: 1799,
+                stock: 60,
+                discount: 15,
+                image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?q=80&w=400&auto=format&fit=crop',
+                description: 'Comfortable joggers with elastic waistband',
+                active: true,
+                sold: 920
+            },
+            {
+                name: 'Graphic Tee Collection',
+                category: 'T-Shirts',
+                price: 999,
+                stock: 80,
+                discount: 20,
+                image: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=400&auto=format&fit=crop',
+                description: 'Limited edition graphic print tee',
+                active: true,
+                sold: 750
+            },
+            {
+                name: 'Canvas Tote Bag',
+                category: 'Accessories',
+                price: 599,
+                stock: 100,
+                discount: 0,
+                image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?q=80&w=400&auto=format&fit=crop',
+                description: 'Eco-friendly canvas tote with logo',
+                active: true,
+                sold: 540
+            },
+            {
+                name: 'Beanie Hat Black',
+                category: 'Accessories',
+                price: 499,
+                stock: 120,
+                discount: 10,
+                image: 'https://images.unsplash.com/photo-1576871337622-98d48d1cf531?q=80&w=400&auto=format&fit=crop',
+                description: 'Warm knit beanie with embroidered logo',
+                active: true,
+                sold: 890
+            }
+        ];
+
+        try {
+            const batch = db.batch();
+            for (const product of sampleProducts) {
+                product.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                const docRef = this.productsCollection.doc();
+                batch.set(docRef, product);
+            }
+            await batch.commit();
+            console.log('Sample products added successfully');
+            return true;
+        } catch (error) {
+            console.error('Error adding sample products:', error);
+            return false;
+        }
+    }
+};
+
+// Initialize database on load
+DB.init();
